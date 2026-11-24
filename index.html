@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Discoteca de Vinilos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script>
+/* ============================================================
+   CONFIGURACIÓN — pega aquí tu "ID de cliente" de Google Cloud
+   (termina en .apps.googleusercontent.com). Ver GUIA.md.
+   Si lo dejas vacío, la app te lo pedirá en pantalla.
+   ============================================================ */
+window.DISCOTECA_CONFIG = {
+  clientId: "",
+  carpeta: "Discoteca de Vinilos"
+};
+</script>
+<style>
+/* Layout: tienda de discos — barra superior con pestañas, rejilla de carátulas cuadradas, tablero con informes */
+:root{
+  color-scheme:light;
+  --bg:#F2F1F6; --surface:#FFFFFF; --surface-2:#E8E6EF; --line:#D6D3E0;
+  --ink:#1C1A24; --ink-2:#5D5970; --accent:#0E6B66; --accent-ink:#FFFFFF;
+  --sticker:#D49A12; --danger:#B3261E; --ok:#2E7D32; --vinyl:#17161C; --groove:#2A2833;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141319; --surface:#1D1C24; --surface-2:#272530; --line:#363341;
+  --ink:#EEEDF3; --ink-2:#A6A2B6; --accent:#47BFB5; --accent-ink:#0B2624;
+  --sticker:#E8B53F; --danger:#F2867E; --ok:#7CCB82; --vinyl:#0A0A0D; --groove:#24232B; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand h1{font-family:var(--f-display);font-stretch:118%;font-weight:850;font-size:1.35rem;letter-spacing:-.01em;margin:0;line-height:1}
+.brand small{display:block;font-family:var(--f-mono);font-size:.7rem;color:var(--ink-2);letter-spacing:.08em;text-transform:uppercase}
+.disc-ico{width:34px;height:34px;border-radius:50%;flex:none;background:radial-gradient(circle,var(--sticker) 0 22%,var(--vinyl) 23% 26%,var(--groove) 27% 30%,var(--vinyl) 31% 100%)}
+.status{display:inline-flex;align-items:center;gap:6px;font:500 .78rem var(--f-mono);color:var(--ink-2);text-decoration:none;border:1px solid var(--line);border-radius:99px;padding:4px 10px}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.status[data-s="saving"]::before,.status[data-s="pending"]::before{background:var(--sticker)}
+.status[data-s="error"]::before,.status[data-s="auth"]::before{background:var(--danger)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto}
+.tab{font:600 .95rem var(--f-body);color:var(--ink-2);background:none;border:0;padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .n{font-family:var(--f-mono);font-size:.75rem;background:var(--surface-2);border-radius:99px;padding:1px 7px;margin-left:6px}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger)}
+.btn.danger.armed{background:var(--danger);color:var(--surface);border-color:var(--danger)}
+.btn.sm{padding:5px 10px;font-size:.85rem}
+.btn.ghost{border-color:transparent;background:none;color:var(--ink-2)}
+.btn:disabled{opacity:.5;cursor:default}
+main{padding-block:20px 60px}
+.notice{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--surface-2);border-radius:8px;padding:10px 14px;font-size:.88rem;margin-bottom:16px}
+.notice.warn{border-left:4px solid var(--danger)}
+/* pantalla de acceso */
+.gate{min-height:100vh;display:grid;place-items:center;padding-block:40px}
+.gate .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px 28px;max-width:480px;width:100%;display:grid;gap:16px;text-align:center}
+.gate .big{width:120px;height:120px;margin:0 auto;border-radius:50%;background:repeating-radial-gradient(circle,var(--vinyl) 0 2px,var(--groove) 2px 3px);display:grid;place-items:center}
+.gate .big span{width:42%;aspect-ratio:1;border-radius:50%;background:var(--sticker)}
+.gate h1{font-family:var(--f-display);font-stretch:118%;font-weight:850;font-size:1.8rem;margin:0;line-height:1.1}
+.gate p{margin:0;color:var(--ink-2)}
+.gate input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 12px;width:100%;font-family:var(--f-mono);font-size:.85rem}
+.gate .btn{justify-content:center;padding:12px 18px;font-size:1rem}
+.gate small{color:var(--ink-2)}
+.gate .err{color:var(--danger);font-size:.88rem}
+.gbtn{background:#fff;color:#1f1f1f;border:1px solid #747775}
+.gbtn:hover{background:#f2f2f2}
+.gbtn svg{width:18px;height:18px}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.bar h2{font-family:var(--f-display);font-stretch:110%;font-weight:800;font-size:1.6rem;margin:0;margin-right:auto;text-wrap:balance}
+.search{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;min-width:0;width:220px;max-width:100%}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;scrollbar-width:thin}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:.85rem;font-weight:500;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{font-family:var(--f-mono);font-size:.72rem;opacity:.7;margin-left:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:20px}
+.card{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cover{position:relative;aspect-ratio:1;max-width:100%;border-radius:4px;overflow:hidden;background:var(--surface-2);box-shadow:0 1px 2px rgba(0,0,0,.18),0 6px 16px -8px rgba(0,0,0,.35);cursor:pointer;border:0;padding:0;width:100%;display:block}
+.cover img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.cover img:not([src]){visibility:hidden}
+.cover:hover img{transform:scale(1.02)}
+.ph{width:100%;height:100%;display:grid;place-items:center;background:var(--surface-2)}
+.ph .rec{width:78%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:repeating-radial-gradient(circle,var(--vinyl) 0 2px,var(--groove) 2px 3px)}
+.ph .lbl{width:38%;aspect-ratio:1;border-radius:50%;background:var(--sticker);display:grid;place-items:center;font:800 .9rem var(--f-display);color:var(--vinyl);text-align:center;padding:4px;overflow:hidden}
+.meta{min-width:0}
+.meta .al{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.meta .ar{color:var(--ink-2);font-size:.88rem;overflow-wrap:anywhere}
+.meta .row{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}
+.gen{font:500 .7rem var(--f-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--accent);border:1px solid currentColor;border-radius:3px;padding:1px 6px}
+.stars{color:var(--sticker);letter-spacing:1px;font-size:.85rem;white-space:nowrap}
+.empty{text-align:center;padding:60px 16px;color:var(--ink-2);border:2px dashed var(--line);border-radius:var(--r)}
+.empty .ph{width:120px;height:120px;margin:0 auto 16px;background:none}
+.empty h3{color:var(--ink);font-family:var(--f-display);font-stretch:110%;margin:0 0 6px}
+dialog{border:0;border-radius:14px;padding:0;background:var(--surface);color:var(--ink);width:min(860px,calc(100vw - 24px));max-height:calc(100vh - 24px);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(10,9,14,.6)}
+.dlg-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.dlg-h h3{margin:0;margin-right:auto;font-family:var(--f-display);font-stretch:110%;font-size:1.2rem}
+.x{border:0;background:none;font-size:1.5rem;line-height:1;cursor:pointer;color:var(--ink-2);padding:4px 8px}
+.dlg-b{padding:18px}
+.dlg-f{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line)}
+.detail{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:24px}
+@media (max-width:640px){.detail{grid-template-columns:minmax(0,1fr)}}
+.flip{display:flex;gap:6px;margin-top:8px}
+.flip .chip{flex:1;text-align:center}
+.eyebrow{font:500 .72rem var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.detail h4{font-family:var(--f-display);font-stretch:112%;font-weight:850;font-size:1.7rem;line-height:1.1;margin:4px 0 2px;text-wrap:balance;overflow-wrap:anywhere}
+.detail .who{font-size:1.05rem;color:var(--ink-2);margin-bottom:10px}
+.tracks{list-style:none;padding:0;margin:14px 0 0;border-top:1px solid var(--line)}
+.tracks li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.tracks .no{font:500 .78rem var(--f-mono);color:var(--ink-2);width:24px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.tracks .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.rate{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 6px;color:var(--sticker);font-size:.9rem;flex:none}
+.rate option{color:var(--ink)}
+.form{display:grid;gap:14px}
+.imgs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.drop{display:flex;flex-direction:column;gap:6px;min-width:0}
+.drop input{font-size:.8rem;max-width:100%}
+label.f{display:grid;gap:4px;font-weight:600;font-size:.88rem}
+label.f input,label.f textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;font-weight:400;width:100%;min-width:0}
+label.f textarea{min-height:170px;resize:vertical;font-family:var(--f-body);line-height:1.55}
+.hint{font-weight:400;color:var(--ink-2);font-size:.8rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.two{grid-template-columns:1fr}}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:max-content;max-width:100%}
+.seg label{padding:7px 14px;cursor:pointer;font-weight:600;font-size:.88rem}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--ink);color:var(--bg)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi .v{font-family:var(--f-display);font-stretch:105%;font-weight:850;font-size:2.1rem;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi .k{font-size:.82rem;color:var(--ink-2)}
+.panels{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.panels{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h3{margin:0 0 4px;font-family:var(--f-display);font-stretch:110%;font-size:1.15rem}
+.panel p.sub{margin:0 0 14px;color:var(--ink-2);font-size:.85rem}
+.legend{display:flex;gap:14px;font-size:.8rem;color:var(--ink-2);margin-bottom:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.gbar{display:grid;grid-template-columns:minmax(0,120px) minmax(0,1fr) auto;gap:10px;align-items:center;padding:5px 0;font-size:.88rem}
+.gbar .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gbar .tr{display:flex;height:14px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+.gbar .a{background:var(--accent)} .gbar .b{background:var(--sticker)}
+.gbar .ct{font:500 .78rem var(--f-mono);color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rep{display:grid;gap:12px;align-content:start}
+.rep .ctl{display:grid;gap:4px;font-size:.85rem;font-weight:600}
+.rep select{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;width:100%}
+.rep .btns{display:grid;gap:8px}
+.rep .btn{justify-content:space-between}
+.rep .btn span.d{font-weight:400;font-size:.78rem;opacity:.75}
+.top10{list-style:none;padding:0;margin:0}
+.top10 li{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.top10 .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.top10 .t small{display:block;color:var(--ink-2)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem;z-index:50;max-width:calc(100vw - 32px)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ Pantalla de acceso ============ -->
+<section class="gate wrap" id="gate">
+  <div class="box">
+    <div class="big" aria-hidden="true"><span></span></div>
+    <h1>Discoteca de Vinilos</h1>
+    <div id="gateSetup" hidden style="display:grid;gap:12px">
+      <p>Falta configurar el <b>ID de cliente</b> de Google. Pégalo aquí (lo obtienes siguiendo la guía).</p>
+      <input id="cidInput" placeholder="123456789-abc.apps.googleusercontent.com" autocomplete="off" aria-label="ID de cliente de Google">
+      <button class="btn primary" id="cidSave" type="button">Guardar ID de cliente</button>
+      <small>Se guarda solo en este navegador. Para no tener que pegarlo en cada equipo, escríbelo en el archivo index.html.</small>
+    </div>
+    <div id="gateLogin" hidden style="display:grid;gap:12px">
+      <p>Tu colección se guarda en tu Google Drive, en la carpeta <b id="folderName">Discoteca de Vinilos</b>.</p>
+      <button class="btn gbtn" id="btnConnect" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Conectar con Google Drive</button>
+      <small>La app solo puede ver los archivos que ella misma crea en tu Drive, nada más.</small>
+      <button class="btn ghost sm" id="cidReset" type="button" hidden>Cambiar ID de cliente</button>
+    </div>
+    <div id="gateLoading" hidden><p>Abriendo tu colección en Drive…</p></div>
+    <p class="err" id="gateErr" hidden></p>
+  </div>
+</section>
+
+<!-- ============ App ============ -->
+<div id="app" hidden>
+<header>
+  <div class="wrap top">
+    <div class="brand"><div class="disc-ico" aria-hidden="true"></div><div><h1>Discoteca de Vinilos</h1><small>LP · 33⅓ RPM</small></div></div>
+    <a class="status" id="status" data-s="ok" target="_blank" rel="noopener" title="Abrir la carpeta en Google Drive">Guardado en Drive</a>
+    <button class="btn primary" id="btnAdd" type="button">+ Añadir disco</button>
+    <button class="btn ghost sm" id="btnOut" type="button">Salir</button>
+  </div>
+  <div class="wrap">
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="mis-discos" type="button">Mis discos<span class="n" id="nMis">0</span></button>
+      <button class="tab" role="tab" data-view="deseados" type="button">Discos deseados<span class="n" id="nDes">0</span></button>
+      <button class="tab" role="tab" data-view="tablero" type="button">Tablero</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="notice warn" id="authNotice" hidden><span style="flex:1;min-width:200px">Tu sesión de Google caducó. Los cambios no guardados se conservan mientras no cierres esta página.</span><button class="btn primary sm" id="btnReconnect" type="button">Reconectar y guardar</button></div>
+  <section id="viewList" hidden>
+    <div class="bar"><h2 id="listTitle">Mis discos</h2><input class="search" id="q" type="search" placeholder="Buscar artista o álbum…" aria-label="Buscar"></div>
+    <div class="chips" id="chips" role="toolbar" aria-label="Filtrar por género"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+  <section id="viewDash" hidden>
+    <div class="bar"><h2>Tablero</h2></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="panels">
+      <div style="display:grid;gap:18px;align-content:start;min-width:0">
+        <div class="panel"><h3>Discos por género</h3><p class="sub">Comparación entre lo que tienes y lo que deseas.</p>
+          <div class="legend"><span><i style="background:var(--accent)"></i>Mis discos</span><span><i style="background:var(--sticker)"></i>Deseados</span></div>
+          <div id="gbars"></div></div>
+        <div class="panel"><h3>Canciones mejor valoradas</h3><p class="sub">De tus discos, ordenadas por estrellas.</p><ol class="top10" id="top10"></ol></div>
+      </div>
+      <div class="panel rep"><div><h3>Informes en PDF</h3><p class="sub" style="margin:0">Los listados de discos llevan portada, artista, álbum y género, sin canciones.</p></div>
+        <label class="ctl" for="repGen">Género<select id="repGen"></select></label>
+        <div class="btns">
+          <button class="btn" id="pdfMis" type="button">PDF · Mis discos <span class="d">listado</span></button>
+          <button class="btn" id="pdfDes" type="button">PDF · Discos deseados <span class="d">listado</span></button>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:4px 0">
+        <div><h3>Play list por género</h3><p class="sub" style="margin:0">Canciones de Mis discos ordenadas de más a menos estrellas.</p></div>
+        <label class="ctl" for="repMin">Incluir canciones<select id="repMin">
+          <option value="0">Todas (las sin valorar al final)</option><option value="1">Con 1★ o más</option><option value="2">Con 2★ o más</option><option value="3">Con 3★ o más</option><option value="4">Con 4★ o más</option><option value="5">Solo 5★</option></select></label>
+        <button class="btn primary" id="pdfPlay" type="button">PDF · Play list <span class="d">por estrellas</span></button>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<dialog id="dlgDetail"></dialog>
+<dialog id="dlgForm">
+  <form id="frm" method="dialog">
+    <div class="dlg-h"><h3 id="frmTitle">Añadir disco</h3><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="dlg-b form">
+      <div class="seg" role="radiogroup" aria-label="Lista">
+        <label><input type="radio" name="estado" value="mio" id="estMio" checked>Mis discos</label>
+        <label><input type="radio" name="estado" value="deseado" id="estDes">Deseados</label>
+      </div>
+      <div class="imgs">
+        <div class="drop"><span class="eyebrow">Portada · cara frontal</span><label class="cover" for="fFront" id="pvFront"></label><input type="file" id="fFront" accept="image/*"></div>
+        <div class="drop"><span class="eyebrow">Contraportada · cara trasera</span><label class="cover" for="fBack" id="pvBack"></label><input type="file" id="fBack" accept="image/*"></div>
+      </div>
+      <div class="two">
+        <label class="f" for="iArt">Artista<input id="iArt" required autocomplete="off"></label>
+        <label class="f" for="iAlb">Álbum<input id="iAlb" required autocomplete="off"></label>
+      </div>
+      <label class="f" for="iGen">Género musical<input id="iGen" list="genList" required autocomplete="off" placeholder="Rock, Jazz, Salsa…"></label>
+      <datalist id="genList"></datalist>
+      <label class="f" for="iSongs">Lista de canciones <span class="hint">Una canción por línea, en el orden del disco. Las estrellas se asignan después, en la ficha del disco.</span><textarea id="iSongs" placeholder="1. Primera canción&#10;2. Segunda canción"></textarea></label>
+    </div>
+    <div class="dlg-f"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit" id="btnSave">Guardar disco</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const GENEROS=["Rock","Pop","Jazz","Blues","Soul","Funk","Salsa","Bolero","Clásica","Electrónica","Reggae","Hip Hop","Metal","Folk","Country","Tango","Cumbia","Vallenato","Bossa Nova","Disco","Baladas","Ranchera","Merengue","Trova","Bandas sonoras"];
+const starTxt=n=>"★".repeat(n)+"☆".repeat(5-n);
+const normGen=g=>{g=String(g||"").trim().replace(/\s+/g," ");return g?g.charAt(0).toLocaleUpperCase("es")+g.slice(1):"Sin género"};
+const cmp=(a,b)=>String(a).localeCompare(String(b),"es",{sensitivity:"base"});
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+
+const CFG=window.DISCOTECA_CONFIG||{};
+const FOLDER=(CFG.carpeta||"Discoteca de Vinilos").replace(/'/g,"");
+const SCOPE="https://www.googleapis.com/auth/drive.file";
+const DAPI="https://www.googleapis.com/drive/v3/files",UAPI="https://www.googleapis.com/upload/drive/v3/files";
+let CLIENT_ID=(CFG.clientId||"").trim()||lsGet("dv-client-id")||"";
+
+const S={discos:[],view:"mis-discos",gen:{"mis-discos":"__all","deseados":"__all"},q:""};
+let token=null,tokenExp=0,tokenClient=null,folderId=null,dataId=null,loaded=false;
+
+/* ================= Acceso ================= */
+function gate(which,err){
+  $("#gate").hidden=false;$("#app").hidden=true;
+  $("#gateSetup").hidden=which!=="setup";$("#gateLogin").hidden=which!=="login";$("#gateLoading").hidden=which!=="loading";
+  $("#gateErr").hidden=!err;$("#gateErr").textContent=err||"";
+  $("#folderName").textContent=FOLDER;
+  $("#cidReset").hidden=!!(CFG.clientId||"").trim();
+}
+$("#cidSave").onclick=()=>{
+  const v=$("#cidInput").value.trim();
+  if(!/\.apps\.googleusercontent\.com$/.test(v))return gate("setup","Ese no parece un ID de cliente. Debe terminar en .apps.googleusercontent.com");
+  CLIENT_ID=v;lsSet("dv-client-id",v);tokenClient=null;gate("login");
+};
+$("#cidReset").onclick=()=>{lsSet("dv-client-id",null);CLIENT_ID="";$("#cidInput").value="";gate("setup")};
+
+function connect(){
+  if(!(window.google&&google.accounts&&google.accounts.oauth2)){const m="No se pudo cargar el inicio de sesión de Google. Revisa tu conexión y recarga la página.";return loaded?toast(m):gate("login",m)}
+  if(!tokenClient){
+    tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPE,callback:onToken,
+      error_callback:e=>{if(!loaded)gate("login",e&&e.type==="popup_closed"?"Se cerró la ventana de Google antes de terminar.":"No se pudo abrir la ventana de Google. Permite las ventanas emergentes para esta página.")}});
+  }
+  tokenClient.requestAccessToken({prompt:lsGet("dv-connected")?"":"consent"});
+}
+async function onToken(r){
+  if(r.error){if(!loaded)gate("login","Google no concedió el acceso ("+r.error+"). Revisa que tu cuenta esté en «Usuarios de prueba» (ver guía).");return}
+  if(google.accounts.oauth2.hasGrantedAllScopes&&!google.accounts.oauth2.hasGrantedAllScopes(r,SCOPE)){gate("login","Debes marcar la casilla que permite a la app guardar archivos en tu Drive.");return}
+  token=r.access_token;tokenExp=Date.now()+((+r.expires_in||3600)-90)*1000;lsSet("dv-connected","1");
+  $("#authNotice").hidden=true;
+  if(!loaded){gate("loading");try{await loadAll()}catch(e){console.error(e);gate("login",e&&e.code==="auth"?"La sesión no es válida. Inténtalo de nuevo.":"No se pudo abrir la carpeta en Drive. "+(e&&e.status===403?"Comprueba que la API de Google Drive está habilitada en tu proyecto.":"Inténtalo de nuevo."));return}}
+  else{if(dirty)flush();rehydrateBroken()}
+}
+$("#btnConnect").onclick=connect;
+$("#btnReconnect").onclick=connect;
+$("#btnOut").onclick=()=>{
+  if(dirty&&!confirm("Hay cambios sin guardar en Drive. ¿Salir de todos modos?"))return;
+  try{if(token)google.accounts.oauth2.revoke(token,()=>{})}catch(e){}
+  lsSet("dv-connected",null);token=null;loaded=false;S.discos=[];dirty=false;gate("login");
+};
+function needAuth(){token=null;$("#authNotice").hidden=false;setStatus("auth")}
+
+/* ================= Google Drive ================= */
+async function api(url,opts={}){
+  if(!token||Date.now()>tokenExp){needAuth();throw {code:"auth"}}
+  const r=await fetch(url,{...opts,headers:{...(opts.headers||{}),Authorization:"Bearer "+token}});
+  if(r.status===401){needAuth();throw {code:"auth"}}
+  if(!r.ok)throw {code:"http",status:r.status,msg:await r.text().catch(()=>"")};
+  return r;
+}
+async function findOne(q){const r=await api(`${DAPI}?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive&pageSize=10`);const j=await r.json();return (j.files&&j.files[0])||null}
+function multipart(meta,blob,type){const b="dv"+Math.random().toString(36).slice(2);return {ct:`multipart/related; boundary=${b}`,body:new Blob([`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: ${type}\r\n\r\n`,blob,`\r\n--${b}--`])}}
+async function createFile(meta,blob,type){const m=multipart(meta,blob,type);const r=await api(`${UAPI}?uploadType=multipart&fields=id`,{method:"POST",headers:{"Content-Type":m.ct},body:m.body});return (await r.json()).id}
+async function updateFile(id,blob,type){await api(`${UAPI}/${id}?uploadType=media`,{method:"PATCH",headers:{"Content-Type":type},body:blob})}
+async function trashFile(id){if(!id)return;try{await api(`${DAPI}/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})})}catch(e){}}
+const jsonBlob=()=>new Blob([JSON.stringify({app:"Discoteca de Vinilos",version:1,actualizado:new Date().toISOString(),discos:S.discos},null,1)],{type:"application/json"});
+
+async function loadAll(){
+  let f=await findOne(`name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  if(f)folderId=f.id;
+  else{const r=await api(`${DAPI}?fields=id`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:FOLDER,mimeType:"application/vnd.google-apps.folder"})});folderId=(await r.json()).id}
+  const d=await findOne(`name='discos.json' and '${folderId}' in parents and trashed=false`);
+  if(d){dataId=d.id;const j=await (await api(`${DAPI}/${d.id}?alt=media`)).json();S.discos=Array.isArray(j.discos)?j.discos:[]}
+  else{S.discos=[];dataId=await createFile({name:"discos.json",parents:[folderId],mimeType:"application/json"},jsonBlob(),"application/json")}
+  loaded=true;$("#status").href=`https://drive.google.com/drive/folders/${folderId}`;setStatus("ok");
+  $("#gate").hidden=true;$("#app").hidden=false;route();render();
+}
+
+/* ---- guardado ---- */
+let dirty=false,saving=false,saveT=null;
+function setStatus(s){const e=$("#status");e.dataset.s=s;e.textContent={ok:"Guardado en Drive",pending:"Cambios pendientes",saving:"Guardando…",error:"Error al guardar",auth:"Sin conexión con Drive"}[s]}
+function persist(){dirty=true;setStatus("pending");render();clearTimeout(saveT);saveT=setTimeout(flush,700)}
+async function flush(){
+  if(saving||!dirty)return;
+  if(!token||Date.now()>tokenExp){needAuth();return}
+  saving=true;dirty=false;setStatus("saving");
+  try{await updateFile(dataId,jsonBlob(),"application/json");setStatus(dirty?"pending":"ok")}
+  catch(e){dirty=true;if(e.code!=="auth"){setStatus("error");toast("No se pudo guardar en Drive. Se reintentará en unos segundos.")}}
+  finally{saving=false;if(dirty&&token){clearTimeout(saveT);saveT=setTimeout(flush,5000)}}
+}
+addEventListener("beforeunload",e=>{if(dirty||saving){e.preventDefault();e.returnValue=""}});
+
+/* ---- imágenes ---- */
+const urlCache=new Map(),inflight=new Map();
+function getUrl(id){
+  if(urlCache.has(id))return Promise.resolve(urlCache.get(id));
+  if(!inflight.has(id))inflight.set(id,api(`${DAPI}/${id}?alt=media`).then(r=>r.blob()).then(b=>{const u=URL.createObjectURL(b);urlCache.set(id,u);inflight.delete(id);return u},e=>{inflight.delete(id);throw e}));
+  return inflight.get(id);
+}
+function hydrate(root){
+  (root||document).querySelectorAll("img[data-ref]:not([src])").forEach(img=>{
+    getUrl(img.dataset.ref).then(u=>{img.src=u}).catch(e=>{if(e&&e.code==="auth")return;img.dataset.broken="1";img.insertAdjacentHTML("afterend",phHTML("?"));img.remove()});
+  });
+}
+function rehydrateBroken(){hydrate(document)}
+async function compress(file,max){
+  const bmp=await createImageBitmap(file);
+  const k=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return await new Promise(r=>c.toBlob(r,"image/jpeg",.86));
+}
+const fname=s=>String(s).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim().slice(0,120);
+async function storeImage(file,d,lado){
+  const blob=await compress(file,1400);
+  const id=await createFile({name:fname(`${d.artista} - ${d.album} (${lado}).jpg`),parents:[folderId],mimeType:"image/jpeg"},blob,"image/jpeg");
+  urlCache.set(id,URL.createObjectURL(blob));return id;
+}
+
+let toastT;function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,3500)}
+function newId(){return "d"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+/* ================= Rutas ================= */
+function route(){const h=location.hash.slice(1);S.view=["mis-discos","deseados","tablero"].includes(h)?h:"mis-discos"}
+addEventListener("hashchange",()=>{route();if(loaded)render()});
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{location.hash=t.dataset.view});
+
+/* ================= Utilidades de vista ================= */
+const byEstado=e=>S.discos.filter(d=>(d.estado||"mio")===e);
+function genCounts(list){const m=new Map();list.forEach(d=>{const g=normGen(d.genero);m.set(g,(m.get(g)||0)+1)});return [...m.entries()].sort((a,b)=>cmp(a[0],b[0]))}
+function avg(d){const r=(d.canciones||[]).map(c=>c.estrellas||0).filter(Boolean);return r.length?r.reduce((a,b)=>a+b,0)/r.length:0}
+const phHTML=t=>`<div class="ph"><div class="rec"><div class="lbl">${esc(t)}</div></div></div>`;
+function coverHTML(d,ref){
+  ref=ref===undefined?d.portada:ref;
+  if(ref)return urlCache.has(ref)?`<img src="${esc(urlCache.get(ref))}" alt="">`:`<img data-ref="${esc(ref)}" alt="">`;
+  return phHTML((d.album||d.artista||"LP").split(/\s+/).slice(0,2).map(w=>w[0]||"").join("").toUpperCase());
+}
+
+/* ================= Render ================= */
+function render(){
+  if(!loaded)return;
+  const mis=byEstado("mio"),des=byEstado("deseado");
+  $("#nMis").textContent=mis.length;$("#nDes").textContent=des.length;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===S.view));
+  $("#viewList").hidden=S.view==="tablero";$("#viewDash").hidden=S.view!=="tablero";
+  if(S.view==="tablero")renderDash(mis,des);else renderList(S.view==="mis-discos"?mis:des);
+  if(dlgD.open)drawDetail();
+}
+function renderList(list){
+  const isMis=S.view==="mis-discos";
+  $("#listTitle").textContent=isMis?"Mis discos":"Discos deseados";
+  const counts=genCounts(list);let g=S.gen[S.view];
+  if(g!=="__all"&&!counts.some(c=>c[0]===g))g=S.gen[S.view]="__all";
+  $("#chips").innerHTML=`<button class="chip" type="button" data-g="__all" aria-pressed="${g==="__all"}">Todos<span class="n">${list.length}</span></button>`+
+    counts.map(([n,c])=>`<button class="chip" type="button" data-g="${esc(n)}" aria-pressed="${g===n}">${esc(n)}<span class="n">${c}</span></button>`).join("");
+  const q=S.q.trim().toLocaleLowerCase("es");
+  const shown=list.filter(d=>(g==="__all"||normGen(d.genero)===g)&&(!q||(d.artista+" "+d.album).toLocaleLowerCase("es").includes(q)))
+    .sort((a,b)=>cmp(a.artista,b.artista)||cmp(a.album,b.album));
+  const grid=$("#grid");
+  if(!list.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ph"><div class="rec"><div class="lbl">LP</div></div></div><h3>${isMis?"Aún no hay discos en tu colección":"Tu lista de deseos está vacía"}</h3><p>${isMis?"Añade tu primer LP con su portada, contraportada y lista de canciones.":"Guarda aquí los discos que quieres conseguir. Cuando compres uno, pásalo a Mis discos con un clic."}</p><button class="btn primary" type="button" data-add>+ Añadir disco</button></div>`;return}
+  if(!shown.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">Ningún disco coincide con el filtro.</div>`;return}
+  grid.innerHTML=shown.map(d=>{const a=avg(d);return `<article class="card">
+    <button class="cover" type="button" data-open="${esc(d.id)}" aria-label="Ver ${esc(d.album)}">${coverHTML(d)}</button>
+    <div class="meta"><div class="al">${esc(d.album)}</div><div class="ar">${esc(d.artista)}</div>
+    <div class="row"><span class="gen">${esc(normGen(d.genero))}</span>${isMis&&a?`<span class="stars" title="Promedio ${a.toFixed(1)}">${starTxt(Math.round(a))}</span>`:""}</div></div>
+    ${!isMis?`<button class="btn sm primary" type="button" data-buy="${esc(d.id)}">✓ Lo compré → Mis discos</button>`:""}
+  </article>`}).join("");
+  hydrate(grid);
+}
+$("#chips").onclick=e=>{const b=e.target.closest("[data-g]");if(!b)return;S.gen[S.view]=b.dataset.g;render()};
+$("#q").oninput=e=>{S.q=e.target.value;render()};
+$("#grid").onclick=e=>{
+  const o=e.target.closest("[data-open]");if(o)return openDetail(o.dataset.open);
+  const b=e.target.closest("[data-buy]");if(b)return buy(b.dataset.buy);
+  if(e.target.closest("[data-add]"))openForm(null);
+};
+function buy(id){const d=S.discos.find(x=>x.id===id);if(!d)return;d.estado="mio";d.compradoEn=new Date().toISOString();persist();toast(`«${d.album}» pasó a Mis discos`)}
+
+/* ================= Ficha ================= */
+const dlgD=$("#dlgDetail");let curId=null,curSide="front";
+function openDetail(id){curId=id;curSide="front";drawDetail();if(!dlgD.open)dlgD.showModal()}
+function drawDetail(){
+  const d=S.discos.find(x=>x.id===curId);if(!d){dlgD.open&&dlgD.close();return}
+  const isMis=(d.estado||"mio")==="mio",songs=d.canciones||[];
+  const ref=curSide==="front"?d.portada:d.contraportada;
+  dlgD.innerHTML=`<div class="dlg-h"><h3>${isMis?"Mis discos":"Discos deseados"}</h3><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="dlg-b detail">
+    <div><div class="cover" style="cursor:default">${ref?coverHTML(d,ref):phHTML(curSide==="front"?"Sin portada":"Sin contra")}</div>
+      <div class="flip"><button class="chip" type="button" data-side="front" aria-pressed="${curSide==="front"}">Cara frontal</button><button class="chip" type="button" data-side="back" aria-pressed="${curSide==="back"}">Cara trasera</button></div></div>
+    <div style="min-width:0"><div class="eyebrow">${esc(normGen(d.genero))} · ${songs.length} canciones</div>
+      <h4>${esc(d.album)}</h4><div class="who">${esc(d.artista)}</div>
+      ${songs.length?`<ol class="tracks">${songs.map((c,i)=>`<li><span class="no">${i+1}</span><span class="t">${esc(c.titulo)}</span>
+        <select class="rate" data-i="${i}" aria-label="Valoración de ${esc(c.titulo)}">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${(c.estrellas||0)===n?"selected":""}>${n?starTxt(n):"Sin valorar"}</option>`).join("")}</select></li>`).join("")}</ol>`:`<p class="hint">Este disco no tiene canciones registradas. Usa «Editar» para añadirlas.</p>`}
+    </div></div>
+  <div class="dlg-f"><button class="btn danger" type="button" data-del>Eliminar</button><span style="flex:1"></span><button class="btn" type="button" data-edit>Editar</button>${isMis?"":`<button class="btn primary" type="button" data-buyd>✓ Lo compré → Mis discos</button>`}</div>`;
+  hydrate(dlgD);
+}
+dlgD.addEventListener("click",e=>{
+  if(e.target===dlgD||e.target.closest("[data-close]"))return dlgD.close();
+  const s=e.target.closest("[data-side]");if(s){curSide=s.dataset.side;return drawDetail()}
+  const d=S.discos.find(x=>x.id===curId);if(!d)return;
+  if(e.target.closest("[data-edit]")){dlgD.close();return openForm(d)}
+  if(e.target.closest("[data-buyd]"))return buy(d.id);
+  const del=e.target.closest("[data-del]");
+  if(del){
+    if(!del.classList.contains("armed")){del.classList.add("armed");del.textContent="¿Seguro? Pulsa otra vez para eliminar";setTimeout(()=>{if(del.isConnected){del.classList.remove("armed");del.textContent="Eliminar"}},4000);return}
+    S.discos=S.discos.filter(x=>x.id!==d.id);dlgD.close();persist();
+    trashFile(d.portada);trashFile(d.contraportada);
+    toast(`«${d.album}» eliminado (sus imágenes van a la papelera de Drive)`);
+  }
+});
+dlgD.addEventListener("change",e=>{
+  const sel=e.target.closest(".rate");if(!sel)return;
+  const d=S.discos.find(x=>x.id===curId);if(!d)return;
+  d.canciones[+sel.dataset.i].estrellas=+sel.value;persist();
+});
+
+/* ================= Formulario ================= */
+const dlgF=$("#dlgForm"),frm=$("#frm");let editing=null,pending={front:null,back:null};
+function setPv(el,ref){el.innerHTML=ref?coverHTML({},ref):phHTML("Subir imagen");hydrate(el)}
+function openForm(d){
+  editing=d;pending={front:null,back:null};
+  $("#frmTitle").textContent=d?"Editar disco":"Añadir disco";
+  const est=d?(d.estado||"mio"):(S.view==="deseados"?"deseado":"mio");
+  $("#estMio").checked=est==="mio";$("#estDes").checked=est==="deseado";
+  $("#iArt").value=d?d.artista:"";$("#iAlb").value=d?d.album:"";
+  $("#iGen").value=d?normGen(d.genero):(S.gen[S.view]&&S.gen[S.view]!=="__all"?S.gen[S.view]:"");
+  $("#iSongs").value=d?(d.canciones||[]).map(c=>c.titulo).join("\n"):"";
+  $("#fFront").value="";$("#fBack").value="";
+  setPv($("#pvFront"),d&&d.portada);setPv($("#pvBack"),d&&d.contraportada);
+  const gs=new Set(GENEROS);S.discos.forEach(x=>gs.add(normGen(x.genero)));
+  $("#genList").innerHTML=[...gs].sort(cmp).map(g=>`<option value="${esc(g)}"></option>`).join("");
+  $("#btnSave").disabled=false;$("#btnSave").textContent="Guardar disco";
+  dlgF.showModal();
+}
+$("#btnAdd").onclick=()=>openForm(null);
+dlgF.addEventListener("click",e=>{if(e.target===dlgF||e.target.closest("[data-close]"))dlgF.close()});
+for(const [inp,pv,key] of [["#fFront","#pvFront","front"],["#fBack","#pvBack","back"]]){
+  $(inp).onchange=e=>{const f=e.target.files[0];if(!f)return;pending[key]=f;$(pv).innerHTML=`<img src="${URL.createObjectURL(f)}" alt="">`};
+}
+frm.addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!token||Date.now()>tokenExp){needAuth();toast("Reconecta con Google Drive para guardar.");return}
+  const btn=$("#btnSave");btn.disabled=true;btn.textContent="Subiendo a Drive…";
+  try{
+    const old=editing?(editing.canciones||[]):[];
+    const titles=$("#iSongs").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const canciones=titles.map((t,i)=>{const m=old.find(c=>c.titulo===t);return {titulo:t,estrellas:m?m.estrellas||0:0}});
+    const d={...(editing||{}),id:editing?editing.id:newId(),
+      estado:$("#estDes").checked?"deseado":"mio",artista:$("#iArt").value.trim(),album:$("#iAlb").value.trim(),
+      genero:normGen($("#iGen").value),canciones,actualizado:new Date().toISOString()};
+    if(!editing)d.creado=d.actualizado;
+    const oldRefs=[];
+    if(pending.front){if(d.portada)oldRefs.push(d.portada);d.portada=await storeImage(pending.front,d,"portada")}
+    if(pending.back){if(d.contraportada)oldRefs.push(d.contraportada);d.contraportada=await storeImage(pending.back,d,"contraportada")}
+    const i=S.discos.findIndex(x=>x.id===d.id);if(i>=0)S.discos[i]=d;else S.discos.push(d);
+    dlgF.close();persist();oldRefs.forEach(trashFile);
+    toast(editing?"Disco actualizado":`«${d.album}» guardado en ${d.estado==="mio"?"Mis discos":"Discos deseados"}`);
+  }catch(err){
+    console.error(err);btn.disabled=false;btn.textContent="Guardar disco";
+    toast(err&&err.code==="auth"?"La sesión de Google caducó. Reconecta y vuelve a guardar.":err&&err.name==="InvalidStateError"?"No se pudo leer la imagen. Usa JPG o PNG.":"No se pudo subir a Drive. Inténtalo de nuevo.");
+  }
+});
+
+/* ================= Tablero ================= */
+function allSongs(list){const out=[];list.forEach(d=>(d.canciones||[]).forEach(c=>out.push({...c,artista:d.artista,album:d.album,genero:normGen(d.genero)})));return out}
+function renderDash(mis,des){
+  const songs=allSongs(mis),rated=songs.filter(s=>s.estrellas>0);
+  const gens=new Set([...mis,...des].map(d=>normGen(d.genero)));
+  $("#kpis").innerHTML=[[mis.length,"Mis discos"],[des.length,"Discos deseados"],[songs.length,`Canciones · ${rated.length} valoradas`],[gens.size,"Géneros"]]
+    .map(([v,k])=>`<div class="kpi"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`).join("");
+  const m=new Map();
+  mis.forEach(d=>{const g=normGen(d.genero),v=m.get(g)||[0,0];m.set(g,[v[0]+1,v[1]])});
+  des.forEach(d=>{const g=normGen(d.genero),v=m.get(g)||[0,0];m.set(g,[v[0],v[1]+1])});
+  const rows=[...m.entries()].sort((a,b)=>(b[1][0]+b[1][1])-(a[1][0]+a[1][1])||cmp(a[0],b[0]));
+  const max=Math.max(1,...rows.map(r=>r[1][0]+r[1][1]));
+  $("#gbars").innerHTML=rows.length?rows.map(([g,[a,b]])=>`<div class="gbar"><span class="nm" title="${esc(g)}">${esc(g)}</span><span class="tr"><span class="a" style="width:${a/max*100}%"></span><span class="b" style="width:${b/max*100}%"></span></span><span class="ct">${a} · ${b}</span></div>`).join(""):`<p class="hint">Cuando añadas discos verás aquí su reparto por género.</p>`;
+  const top=rated.sort((x,y)=>y.estrellas-x.estrellas||cmp(x.titulo,y.titulo)).slice(0,10);
+  $("#top10").innerHTML=top.length?top.map(s=>`<li><span class="stars">${starTxt(s.estrellas)}</span><span class="t">${esc(s.titulo)}<small>${esc(s.artista)} · ${esc(s.album)}</small></span></li>`).join(""):`<li class="hint">Valora canciones en la ficha de cada disco para ver tus favoritas aquí.</li>`;
+  const sel=$("#repGen"),cur=sel.value||"__all";
+  sel.innerHTML=`<option value="__all">Todos los géneros</option>`+[...gens].sort(cmp).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join("");
+  sel.value=[...sel.options].some(o=>o.value===cur)?cur:"__all";
+}
+
+/* ================= PDF ================= */
+const jpgCache=new Map();
+async function refToJpeg(ref){
+  if(!ref)return null;if(jpgCache.has(ref))return jpgCache.get(ref);
+  try{
+    const u=await getUrl(ref);const blob=await (await fetch(u)).blob();const bmp=await createImageBitmap(blob);
+    const k=Math.min(1,360/Math.max(bmp.width,bmp.height)),c=document.createElement("canvas");
+    c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0,c.width,c.height);
+    const r={data:c.toDataURL("image/jpeg",.82),w:c.width,h:c.height};jpgCache.set(ref,r);return r;
+  }catch(e){return null}
+}
+const C={ink:[28,26,36],ink2:[93,89,112],accent:[14,107,102],sticker:[212,154,18],line:[214,211,224],soft:[242,241,246]};
+function pdfHeader(doc,title,sub){
+  const W=doc.internal.pageSize.getWidth();
+  doc.setFillColor(...C.ink);doc.rect(0,0,W,26,"F");
+  doc.setFillColor(...C.sticker);doc.circle(18,13,6,"F");doc.setFillColor(...C.ink);doc.circle(18,13,1.2,"F");
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(16);doc.text(title,30,12);
+  doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(200,198,210);doc.text(sub,30,19);
+  return 36;
+}
+function pdfFooter(doc){
+  const n=doc.getNumberOfPages(),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+  const f=new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"});
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...C.ink2);doc.setFont("helvetica","normal");doc.text(`Discoteca de Vinilos · ${f}`,14,H-8);doc.text(`Página ${i} de ${n}`,W-14,H-8,{align:"right"})}
+}
+function star(doc,cx,cy,r,filled){
+  const p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;p.push([cx+rr*Math.cos(a),cy+rr*Math.sin(a)])}
+  const l=[];for(let i=1;i<p.length;i++)l.push([p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]]);
+  doc.setDrawColor(...C.sticker);doc.setFillColor(...C.sticker);doc.setLineWidth(.25);
+  doc.lines(l,p[0][0],p[0][1],[1,1],filled?"FD":"S",true);
+}
+const fileSafe=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\w-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").toLowerCase();
+function savePdf(doc,name){
+  const blob=doc.output("blob"),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast("PDF descargado");
+}
+function needJsPDF(){if(!window.jspdf){toast("No se pudo cargar el generador de PDF. Revisa tu conexión.");return false}return true}
+
+async function pdfDiscos(estado,btn){
+  if(!needJsPDF())return;
+  const g=$("#repGen").value,label=estado==="mio"?"Mis discos":"Discos deseados";
+  const list=byEstado(estado).filter(d=>g==="__all"||normGen(d.genero)===g).sort((a,b)=>cmp(normGen(a.genero),normGen(b.genero))||cmp(a.artista,b.artista)||cmp(a.album,b.album));
+  if(!list.length)return toast(`No hay discos en ${label}${g==="__all"?"":" del género "+g}.`);
+  btn.disabled=true;const old=btn.innerHTML;btn.textContent="Generando PDF…";
+  try{
+    const doc=new jspdf.jsPDF({unit:"mm",format:"a4"}),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+    const sub=`${g==="__all"?"Todos los géneros":"Género: "+g} · ${list.length} ${list.length===1?"disco":"discos"}`;
+    let y=pdfHeader(doc,label,sub),lastG=null;const S2=26;
+    for(const d of list){
+      const gg=normGen(d.genero);
+      if(g==="__all"&&gg!==lastG){
+        if(y+12+S2>H-16){doc.addPage();y=pdfHeader(doc,label,sub)}
+        doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...C.accent);doc.text(gg.toUpperCase(),14,y+4);
+        doc.setDrawColor(...C.accent);doc.setLineWidth(.4);doc.line(14,y+6,W-14,y+6);y+=11;lastG=gg;
+      }
+      if(y+S2>H-16){doc.addPage();y=pdfHeader(doc,label,sub)}
+      const im=await refToJpeg(d.portada);
+      if(im){const s=Math.min(S2/im.w,S2/im.h),w=im.w*s,h=im.h*s;doc.addImage(im.data,"JPEG",14+(S2-w)/2,y+(S2-h)/2,w,h)}
+      else{doc.setFillColor(...C.ink);doc.rect(14,y,S2,S2,"F");doc.setFillColor(40,38,48);doc.circle(14+S2/2,y+S2/2,S2*.42,"F");doc.setFillColor(...C.sticker);doc.circle(14+S2/2,y+S2/2,S2*.16,"F")}
+      const x=14+S2+8,mw=W-14-x;
+      doc.setTextColor(...C.ink);doc.setFont("helvetica","bold");doc.setFontSize(12);
+      const al=doc.splitTextToSize(d.album||"",mw);doc.text(al.slice(0,2),x,y+6);
+      const yy=y+6+Math.min(al.length,2)*5;
+      doc.setFont("helvetica","normal");doc.setFontSize(10.5);doc.setTextColor(...C.ink2);doc.text(doc.splitTextToSize(d.artista||"",mw)[0]||"",x,yy+1);
+      doc.setFontSize(8.5);doc.setTextColor(...C.accent);doc.text(gg.toUpperCase(),x,yy+7);
+      y+=S2+5;doc.setDrawColor(...C.line);doc.setLineWidth(.2);doc.line(14,y-2.5,W-14,y-2.5);
+    }
+    pdfFooter(doc);
+    savePdf(doc,`${fileSafe(label)}${g==="__all"?"":"-"+fileSafe(g)}.pdf`);
+  }finally{btn.disabled=false;btn.innerHTML=old}
+}
+async function pdfPlaylist(btn){
+  if(!needJsPDF())return;
+  const g=$("#repGen").value,min=+$("#repMin").value;
+  const songs=allSongs(byEstado("mio")).filter(s=>(g==="__all"||s.genero===g)&&(min===0||(s.estrellas||0)>=min));
+  if(!songs.length)return toast("No hay canciones que cumplan el filtro elegido.");
+  btn.disabled=true;const old=btn.innerHTML;btn.textContent="Generando PDF…";
+  try{
+    const doc=new jspdf.jsPDF({unit:"mm",format:"a4"}),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+    const groups=new Map();songs.forEach(s=>{if(!groups.has(s.genero))groups.set(s.genero,[]);groups.get(s.genero).push(s)});
+    const gnames=[...groups.keys()].sort(cmp);
+    const sub=`${g==="__all"?"Todos los géneros":"Género: "+g} · ${songs.length} canciones · ordenadas por estrellas`;
+    let y=pdfHeader(doc,"Play list",sub);const row=7.2;
+    const colHead=()=>{doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(...C.ink2);doc.text("#",14,y);doc.text("VALORACIÓN",22,y);doc.text("CANCIÓN",56,y);doc.text("ARTISTA · ÁLBUM",124,y);y+=3;doc.setDrawColor(...C.line);doc.setLineWidth(.2);doc.line(14,y,W-14,y);y+=4.5};
+    for(const gn of gnames){
+      const list=groups.get(gn).sort((a,b)=>(b.estrellas||0)-(a.estrellas||0)||cmp(a.artista,b.artista)||cmp(a.titulo,b.titulo));
+      if(y+24>H-16){doc.addPage();y=pdfHeader(doc,"Play list",sub)}
+      doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(...C.accent);doc.text(gn.toUpperCase(),14,y+3);
+      doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...C.ink2);doc.text(`${list.length} canciones`,W-14,y+3,{align:"right"});
+      doc.setDrawColor(...C.accent);doc.setLineWidth(.4);doc.line(14,y+5,W-14,y+5);y+=11;colHead();
+      list.forEach((s,i)=>{
+        if(y+row>H-16){doc.addPage();y=pdfHeader(doc,"Play list",sub+" (cont.)");colHead()}
+        if(i%2===0){doc.setFillColor(...C.soft);doc.rect(14,y-4.6,W-28,row,"F")}
+        doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...C.ink2);doc.text(String(i+1),14.5,y);
+        const n=s.estrellas||0;
+        if(n)for(let k=0;k<5;k++)star(doc,24+k*5,y-1.3,1.9,k<n);else{doc.setFontSize(8);doc.text("Sin valorar",22,y)}
+        doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...C.ink);doc.text(doc.splitTextToSize(s.titulo,64)[0],56,y);
+        doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...C.ink2);doc.text(doc.splitTextToSize(`${s.artista} · ${s.album}`,W-14-124)[0],124,y);
+        y+=row;
+      });
+      y+=6;
+    }
+    pdfFooter(doc);
+    savePdf(doc,`play-list${g==="__all"?"":"-"+fileSafe(g)}.pdf`);
+  }finally{btn.disabled=false;btn.innerHTML=old}
+}
+$("#pdfMis").onclick=e=>pdfDiscos("mio",e.currentTarget);
+$("#pdfDes").onclick=e=>pdfDiscos("deseado",e.currentTarget);
+$("#pdfPlay").onclick=e=>pdfPlaylist(e.currentTarget);
+
+/* ================= Inicio ================= */
+gate(CLIENT_ID?"login":"setup");
+})();
+</script>
+</body>
+</html>
